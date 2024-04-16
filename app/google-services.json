@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "697298635142",
+    "firebase_url": "https://banco-avanc-default-rtdb.firebaseio.com",
+    "project_id": "banco-avanc",
+    "storage_bucket": "banco-avanc.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697298635142:android:56f74ffb2e0dfbf0ab0407",
+        "android_client_info": {
+          "package_name": "com.example.avancada"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAugSa9XoIDZJ6NmHT8u6kq63CS-wtZ4HQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
