@@ -31,6 +31,7 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
     FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -46,6 +47,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean lastRegionWasSubRegion = false; // Flag para controlar o tipo de região a ser inserida
 
     private Button buttonShowRegions;
+    private Semaphore semaphore = new Semaphore(1);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -169,74 +171,94 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void addRegion(LatLng latLng) {
-        // Adiciona a região à fila
-        int regionNumber = regionQueue.size() + 1;
-        String regionName = "Região " + regionNumber;
-        int userCode = 123; // Substitua pelo código de usuário real
-        long timestamp = System.nanoTime();
-        Region newRegion = new Region(regionName, latLng.latitude, latLng.longitude, userCode, timestamp);
-        regionQueue.add(newRegion);
+        try {
+            semaphore.acquire();
+            // Adiciona a região à fila
+            int regionNumber = regionQueue.size() + 1;
+            String regionName = "Região " + regionNumber;
+            int userCode = 123; // Substitua pelo código de usuário real
+            long timestamp = System.nanoTime();
+            Region newRegion = new Region(regionName, latLng.latitude, latLng.longitude, userCode, timestamp);
+            regionQueue.add(newRegion);
 
-        // Adiciona o marcador ao mapa
-        Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newRegion.getName()));
-        // Define o marcador na instância da região
-        newRegion.setMarker(marker);
+            // Adiciona o marcador ao mapa
+            Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newRegion.getName()));
+            // Define o marcador na instância da região
+            newRegion.setMarker(marker);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
+        }
     }
 
     private void addSubRegion(LatLng latLng) {
-        // Verifica se a nova sub-região está dentro de 5 metros de qualquer região existente
-        for (Region existingRegion : regionQueue) {
-            LatLng existingRegionLatLng = new LatLng(existingRegion.getLatitude(), existingRegion.getLongitude());
-            double distance = calculateDistance(latLng, existingRegionLatLng);
-            if (distance <= 5000) {
-                // Adiciona a sub-região apenas se estiver dentro do raio de 5 metros da região existente
-                int regionNumber = regionQueue.size() + 1;
-                String regionName = "Sub-Região " + regionNumber;
-                int userCode = 123; // Substitua pelo código de usuário real
-                long timestamp = System.nanoTime();
-                SubRegion newSubRegion = new SubRegion(regionName, latLng.latitude, latLng.longitude, userCode, timestamp, existingRegion);
-                regionQueue.add(newSubRegion);
+        try {
+            semaphore.acquire();
+            // Verifica se a nova sub-região está dentro de 5 metros de qualquer região existente
+            for (Region existingRegion : regionQueue) {
+                LatLng existingRegionLatLng = new LatLng(existingRegion.getLatitude(), existingRegion.getLongitude());
+                double distance = calculateDistance(latLng, existingRegionLatLng);
+                if (distance <= 5000) {
+                    // Adiciona a sub-região apenas se estiver dentro do raio de 5 metros da região existente
+                    int regionNumber = regionQueue.size() + 1;
+                    String regionName = "Sub-Região " + regionNumber;
+                    int userCode = 123; // Substitua pelo código de usuário real
+                    long timestamp = System.nanoTime();
+                    SubRegion newSubRegion = new SubRegion(regionName, latLng.latitude, latLng.longitude, userCode, timestamp, existingRegion);
+                    regionQueue.add(newSubRegion);
 
-                // Adiciona o marcador ao mapa
-                Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newSubRegion.getName()));
-                // Define o marcador na instância da sub-região
-                newSubRegion.setMarker(marker);
+                    // Adiciona o marcador ao mapa
+                    Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newSubRegion.getName()));
+                    // Define o marcador na instância da sub-região
+                    newSubRegion.setMarker(marker);
 
-                return;
+                    return;
+                }
             }
+            // Se não estiver dentro do raio de 5 metros de nenhuma região existente, exibe uma mensagem de erro
+            Toast.makeText(MainActivity.this, "Nova sub-região está muito distante de uma região existente", Toast.LENGTH_SHORT).show();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
         }
-        // Se não estiver dentro do raio de 5 metros de nenhuma região existente, exibe uma mensagem de erro
-        Toast.makeText(MainActivity.this, "Nova sub-região está muito distante de uma região existente", Toast.LENGTH_SHORT).show();
     }
 
     private void addRestrictedRegion(LatLng latLng) {
-        // Verifica se a nova região restrita está dentro de 5 metros de qualquer região existente
-        for (Region existingRegion : regionQueue) {
-            LatLng existingRegionLatLng = new LatLng(existingRegion.getLatitude(), existingRegion.getLongitude());
-            double distance = calculateDistance(latLng, existingRegionLatLng);
-            if (distance <= 500) {
-                // Adiciona a região restrita apenas se estiver dentro do raio de 5 metros da região existente
-                int regionNumber = regionQueue.size() + 1;
-                String regionName = "Região Restrita " + regionNumber;
-                int userCode = 123; // Substitua pelo código de usuário real
-                long timestamp = System.nanoTime();
-                RestrictedRegion newRestrictedRegion = new RestrictedRegion(regionName, latLng.latitude, latLng.longitude, userCode, timestamp, true);
-                newRestrictedRegion.setMainRegion(existingRegion);
-                regionQueue.add(newRestrictedRegion);
+        try {
+            semaphore.acquire();
+            // Verifica se a nova região restrita está dentro de 5 metros de qualquer região existente
+            for (Region existingRegion : regionQueue) {
+                LatLng existingRegionLatLng = new LatLng(existingRegion.getLatitude(), existingRegion.getLongitude());
+                double distance = calculateDistance(latLng, existingRegionLatLng);
+                if (distance <= 500) {
+                    // Adiciona a região restrita apenas se estiver dentro do raiode 5 metros da região existente
+                    int regionNumber = regionQueue.size() + 1;
+                    String regionName = "Região Restrita " + regionNumber;
+                    int userCode = 123; // Substitua pelo código de usuário real
+                    long timestamp = System.nanoTime();
+                    RestrictedRegion newRestrictedRegion = new RestrictedRegion(regionName, latLng.latitude, latLng.longitude, userCode, timestamp, true);
+                    newRestrictedRegion.setMainRegion(existingRegion);
+                    regionQueue.add(newRestrictedRegion);
+                    // Adiciona o marcador ao mapa
+                    Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newRestrictedRegion.getName()));
+                    // Define o marcador na instância da região restrita
+                    newRestrictedRegion.setMarker(marker);
 
-                // Adiciona o marcador ao mapa
-                Marker marker = gMap.addMarker(new MarkerOptions().position(latLng).title(newRestrictedRegion.getName()));
-                // Define o marcador na instância da região restrita
-                newRestrictedRegion.setMarker(marker);
+                    // Salva a região deletada no banco de dados Firebase
+                    saveDeletedRegion(newRestrictedRegion);
 
-                // Salva a região deletada no banco de dados Firebase
-                saveDeletedRegion(newRestrictedRegion);
-
-                return;
+                    return;
+                }
             }
+            // Se não estiver dentro do raio de 5 metros de nenhuma região existente, exibe uma mensagem de erro
+            Toast.makeText(MainActivity.this, "Nova região restrita está muito distante de uma região existente", Toast.LENGTH_SHORT).show();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
         }
-        // Se não estiver dentro do raio de 5 metros de nenhuma região existente, exibe uma mensagem de erro
-        Toast.makeText(MainActivity.this, "Nova região restrita está muito distante de uma região existente", Toast.LENGTH_SHORT).show();
     }
 
     private void saveDeletedRegion(Region deletedRegion) {
@@ -268,21 +290,38 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Regiões Salvas");
 
-        if (regionQueue.isEmpty()) {
-            builder.setMessage("Nenhuma região salva.");
-        } else {
-            StringBuilder message = new StringBuilder();
-            for (Region region : regionQueue) {
-                message.append("Nome: ").append(region.getName()).append("\n");
-                message.append("Latitude: ").append(region.getLatitude()).append("\n");
-                message.append("Longitude: ").append(region.getLongitude()).append("\n");
-                message.append("Usuário: ").append(region.getUser()).append("\n");
-                message.append("Timestamp: ").append(region.getTimestamp()).append("\n\n");
+        try {
+            semaphore.acquire();
+            if (regionQueue.isEmpty()) {
+                builder.setMessage("Nenhuma região salva.");
+            } else {
+                StringBuilder message = new StringBuilder();
+                for (Region region : regionQueue) {
+                    message.append("Nome: ").append(region.getName()).append("\n");
+                    message.append("Latitude: ").append(region.getLatitude()).append("\n");
+                    message.append("Longitude: ").append(region.getLongitude()).append("\n");
+                    message.append("Usuário: ").append(region.getUser()).append("\n");
+                    message.append("Timestamp: ").append(region.getTimestamp()).append("\n");
+                    if (region instanceof SubRegion) {
+                        message.append("Tipo: Sub-Região\n");
+                        message.append("Região Pai: ").append(((SubRegion) region).getParentRegion().getName()).append("\n\n");
+                    } else if (region instanceof RestrictedRegion) {
+                        message.append("Tipo: Região Restrita\n");
+                        message.append("Região Principal: ").append(((RestrictedRegion) region).getMainRegion().getName()).append("\n\n");
+                    } else {
+                        message.append("Tipo: Região\n\n");
+                    }
+                }
+                builder.setMessage(message.toString());
             }
-            builder.setMessage(message.toString());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
         }
 
         builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
         builder.create().show();
     }
 }
+

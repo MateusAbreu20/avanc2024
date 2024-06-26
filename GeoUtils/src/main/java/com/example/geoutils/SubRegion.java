@@ -15,4 +15,10 @@ public class SubRegion extends Region {
     public void setMainRegion(Region mainRegion) {
         this.mainRegion = mainRegion;
     }
+
+    // Método para obter a região principal (parent region) da sub-região
+    public Region getParentRegion() {
+        return mainRegion;
+    }
+
 }
